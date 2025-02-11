@@ -18,14 +18,9 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ca-certificates curl gnupg lsb-release
-
-          # Download and dearmor the Docker GPG key
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
           sudo chmod a+r /usr/share/keyrings/docker-archive-keyring.gpg
-
-          # Force using Ubuntu 22.04 (Jammy) repository for Docker
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
           sudo apt update
           sudo apt install -y docker-ce docker-ce-cli containerd.io
 
@@ -37,10 +32,15 @@ jobs:
           docker build -t shegezzy/fastapi-app .
           docker push shegezzy/fastapi-app
 
+      - name: Debug SSH variables
+        run: |
+          echo "SERVER_IP is: $SERVER_IP"
+          echo "SERVER_USER is: $SERVER_USER"
+
       - name: Test SSH Connection
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key && chmod 600 private_key
-          ssh -v -o StrictHostKeyChecking=no -i private_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo 'SSH connection successful'"
+          ssh -v -o StrictHostKeyChecking=no -i private_key "${SERVER_USER}@${SERVER_IP}" "echo 'SSH connection successful'"
           rm -f private_key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
