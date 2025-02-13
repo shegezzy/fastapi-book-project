@@ -1,32 +1,40 @@
-name: Deploy to EC2
+name: CD Pipeline
 
 on:
   push:
     branches:
-      - main   # or your default branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up SSH key
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        # Optional: add GitHub's SSH host key to known_hosts to prevent host verification
-        ssh-keyscan -H 3.95.19.248 >> ~/.ssh/known_hosts  # replace with your EC2 IP address
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H 3.95.19.248 >> ~/.ssh/known_hosts
 
-    - name: Deploy to EC2
-      run: |
-        ssh -i ~/.ssh/id_rsa ubuntu@3.95.19.248 << 'EOF'
-          # Add your deployment commands here, e.g.,
-          cd /path/to/your/app
-          git pull origin main
-          # or other commands to deploy your app
-          echo "Deployment finished"
-        EOF
+      - name: Deploy to EC2
+        run: |
+          ssh ubuntu@3.95.19.248 << 'EOF'
+            export PATH=/bin:/usr/bin:$PATH  # Ensure all commands work
+            
+            # Ensure repo exists
+            if [ ! -d "fastapi-book-project" ]; then
+              git clone https://github.com/Shegezzy/fastapi-book-project.git
+            fi
+            
+            cd fastapi-book-project
+            git pull origin main
+            
+            # Restart services
+            docker-compose down
+            docker-compose up -d --build
+            sudo systemctl restart nginx
+          EOF
