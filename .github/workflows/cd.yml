@@ -3,41 +3,30 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # Change this to your desired branch
+      - main   # or your default branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      # Set up SSH
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 3.95.19.248 >> ~/.ssh/known_hosts
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        # Optional: add GitHub's SSH host key to known_hosts to prevent host verification
+        ssh-keyscan -H 3.95.19.248 >> ~/.ssh/known_hosts  # replace with your EC2 IP address
 
-      # Run deployment commands
-      - name: Deploy to EC2
-        run: |
-          ssh -i ~/.ssh/id_rsa ubuntu@3.95.19.248 << 'EOF'
-            export PATH=/bin:/usr/bin:$PATH  # Ensure all commands work
-            
-            # Ensure repo exists
-            if [ ! -d "fastapi-book-project" ]; then
-              git clone https://github.com/shegezzy/fastapi-book-project.git
-            fi
-            
-            cd fastapi-book-project
-            git pull origin main
-            
-            # Restart services
-            docker-compose down
-            docker-compose up -d --build
-            sudo systemctl restart nginx
-          EOF
+    - name: Deploy to EC2
+      run: |
+        ssh -i ~/.ssh/id_rsa ubuntu@3.95.19.248 << 'EOF'
+          # Add your deployment commands here, e.g.,
+          cd /path/to/your/app
+          git pull origin main
+          # or other commands to deploy your app
+          echo "Deployment finished"
+        EOF
